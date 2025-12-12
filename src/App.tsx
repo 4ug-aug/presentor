@@ -1,50 +1,44 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { ChatInterface, PresentationViewer, Sidebar } from '@/components/layout';
+import { OnboardingDialog } from '@/components/onboarding';
+import { SettingsSheet } from '@/components/settings';
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from '@/components/ui/resizable';
+import { useState } from 'react';
+import './App.css';
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="h-screen w-screen overflow-hidden bg-zinc-950">
+      <OnboardingDialog />
+      
+      <ResizablePanelGroup direction="horizontal" className="h-full">
+        {/* Sidebar */}
+        <ResizablePanel defaultSize={18} minSize={14} maxSize={30}>
+          <Sidebar onOpenSettings={() => setSettingsOpen(true)} />
+        </ResizablePanel>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+        <ResizableHandle className="w-px bg-zinc-800 hover:bg-zinc-700 transition-colors" />
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+        {/* Canvas */}
+        <ResizablePanel defaultSize={52} minSize={30}>
+          <PresentationViewer />
+        </ResizablePanel>
+
+        <ResizableHandle className="w-px bg-zinc-800 hover:bg-zinc-700 transition-colors" />
+
+        {/* Chat */}
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+          <ChatInterface />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
+    </div>
   );
 }
 
