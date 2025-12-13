@@ -23,7 +23,7 @@ const defaultConfig: AIConfig = {
   provider: 'openai',
   apiKey: '',
   baseUrl: '',
-  modelName: 'gpt-4o-mini',
+  modelName: 'gpt-5-mini',
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -47,7 +47,7 @@ export const useSettingsStore = create<SettingsState>()(
           newConfig.modelName = 'custom-model';
         } else if (provider === 'openai') {
           newConfig.baseUrl = '';
-          newConfig.modelName = 'gpt-4o-mini';
+          newConfig.modelName = 'gpt-5-mini';
         } else if (provider === 'google') {
           newConfig.baseUrl = '';
           newConfig.modelName = 'gemini-1.5-flash';

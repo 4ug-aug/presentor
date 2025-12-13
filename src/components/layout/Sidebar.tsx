@@ -1,38 +1,88 @@
+import { useTheme } from '@/components/theme/theme-provider';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuTrigger,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-    deletePresentation,
-    generatePresentationPath,
-    listPresentations,
-    readPresentation,
-    savePresentation,
-    type FileEntry
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { exportToPdf } from '@/lib/export-service';
+import {
+  deletePresentation,
+  generatePresentationPath,
+  listPresentations,
+  readPresentation,
+  savePresentation,
+  type FileEntry,
 } from '@/lib/file-service';
 import { cn } from '@/lib/utils';
 import { usePresentationStore, useSettingsStore } from '@/stores';
-import { FileText, FolderOpen, Plus, Save, Settings, Trash2 } from 'lucide-react';
+import { Edit3, FileDown, FilePlus2, FileText, FolderOpen, Loader2, Monitor, Moon, Plus, Save, Settings, Sun, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface SidebarProps {
   onOpenSettings: () => void;
 }
 
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  
+  const cycleTheme = () => {
+    if (theme === 'light') setTheme('dark');
+    else if (theme === 'dark') setTheme('system');
+    else setTheme('light');
+  };
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+      <TooltipTrigger>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground"
+          onClick={cycleTheme}
+          title={`Theme: ${theme}`}
+        >
+          {theme === 'light' && <Sun className="h-3.5 w-3.5" />}
+          {theme === 'dark' && <Moon className="h-3.5 w-3.5" />}
+          {theme === 'system' && <Monitor className="h-3.5 w-3.5" />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Toggle theme (Current: {theme})</p>
+      </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 export function Sidebar({ onOpenSettings }: SidebarProps) {
   const { 
     presentation, 
@@ -43,6 +93,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
     addSlide,
     deleteSlide,
     newPresentation,
+    updateMeta,
     setPresentation,
     setFilePath,
     markSaved,
@@ -53,6 +104,10 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [showFiles, setShowFiles] = useState(false);
   const [slideToDelete, setSlideToDelete] = useState<number | null>(null);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [titleInput, setTitleInput] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (showFiles && storageDirectory) {
@@ -103,13 +158,29 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
     }
   };
 
+  const handleExport = async () => {
+    if (!presentation) return;
+    setIsExporting(true);
+    try {
+      const success = await exportToPdf({
+        title: presentation.meta.title,
+        slides: presentation.slides,
+      });
+      if (success) {
+        console.log('PDF exported successfully');
+      }
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+      alert(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <div className="flex h-full flex-col bg-zinc-950 text-zinc-300">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          {showFiles ? 'Files' : 'Slides'}
-        </span>
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex gap-1">
           {presentation && (
             <Button
@@ -117,7 +188,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
               size="icon"
               className={cn(
                 "h-6 w-6",
-                hasUnsavedChanges ? "text-amber-500 hover:text-amber-400" : "text-zinc-500 hover:text-zinc-300"
+                hasUnsavedChanges ? "text-amber-500 hover:text-amber-400" : "text-muted-foreground"
               )}
               onClick={handleSave}
               title="Save"
@@ -128,7 +199,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-500 hover:text-zinc-300"
+            className="h-6 w-6 text-muted-foreground"
             onClick={() => setShowFiles(!showFiles)}
             title={showFiles ? "Show slides" : "Browse files"}
           >
@@ -137,16 +208,47 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-500 hover:text-zinc-300"
-            onClick={() => presentation ? addSlide() : newPresentation()}
-            title={presentation ? "Add slide" : "New presentation"}
+            className="h-6 w-6 text-muted-foreground"
+            onClick={() => {
+              setTitleInput('');
+              setShowNewDialog(true);
+            }}
+            title="New presentation"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <FilePlus2 className="h-3.5 w-3.5" />
           </Button>
+          {presentation && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground"
+              onClick={() => addSlide()}
+              title="Add slide"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {presentation && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground"
+              onClick={handleExport}
+              disabled={isExporting}
+              title="Export to PDF"
+            >
+              {isExporting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileDown className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-500 hover:text-zinc-300"
+            className="h-6 w-6 text-muted-foreground"
             onClick={onOpenSettings}
             title="Settings"
           >
@@ -162,7 +264,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
             // File browser
             <div className="space-y-1">
               {files.length === 0 ? (
-                <p className="px-2 py-4 text-center text-xs text-zinc-600">
+                <p className="px-2 py-4 text-center text-xs text-muted-foreground">
                   No presentations yet
                 </p>
               ) : (
@@ -170,7 +272,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
                   <button
                     key={file.path}
                     onClick={() => handleOpen(file)}
-                    className="group flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300"
+                    className="group flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <FileText className="h-3.5 w-3.5 flex-shrink-0" />
@@ -179,7 +281,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-5 w-5 opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400"
+                      className="h-5 w-5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400"
                       onClick={(e) => handleDelete(file, e)}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -192,7 +294,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
             // No presentation loaded
             <button
               onClick={() => newPresentation()}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs"
             >
               <FileText className="h-3.5 w-3.5" />
               <span>New presentation</span>
@@ -208,11 +310,11 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
                       className={cn(
                         "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors",
                         currentSlideIndex === index
-                          ? "bg-zinc-800 text-zinc-100"
-                          : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground"
                       )}
                     >
-                      <span className="font-mono text-zinc-600">{index + 1}</span>
+                      <span className="font-mono text-muted-foreground">{index + 1}</span>
                       <span className="truncate">
                         {extractSlideTitle(slide.html) || `Slide ${index + 1}`}
                       </span>
@@ -237,11 +339,20 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
 
       {/* Footer */}
       {presentation && !showFiles && (
-        <div className="border-t border-zinc-800 px-3 py-2">
-          <p className="truncate text-xs text-zinc-600">
-            {presentation.meta.title}
-            {hasUnsavedChanges && <span className="ml-1 text-amber-500">•</span>}
-          </p>
+        <div className="border-t border-border px-3 py-2">
+          <button
+            onClick={() => {
+              setTitleInput(presentation.meta.title);
+              setShowRenameDialog(true);
+            }}
+            className="group flex w-full items-center gap-1.5 text-left"
+          >
+            <p className="truncate text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+              {presentation.meta.title}
+            </p>
+            <Edit3 className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            {hasUnsavedChanges && <span className="text-amber-500">•</span>}
+          </button>
         </div>
       )}
 
@@ -277,6 +388,93 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* New Presentation Dialog */}
+      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Presentation</DialogTitle>
+            <DialogDescription>
+              Give your presentation a name
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="new-title" className="text-sm">Title</Label>
+            <Input
+              id="new-title"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              placeholder="My Presentation"
+              className="mt-1.5"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  newPresentation(titleInput.trim() || 'Untitled Presentation');
+                  setShowNewDialog(false);
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                newPresentation(titleInput.trim() || 'Untitled Presentation');
+                setShowNewDialog(false);
+              }}
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Presentation Dialog */}
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Presentation</DialogTitle>
+            <DialogDescription>
+              Enter a new name for your presentation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="rename-title" className="text-sm">Title</Label>
+            <Input
+              id="rename-title"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              placeholder="My Presentation"
+              className="mt-1.5"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && titleInput.trim()) {
+                  updateMeta({ title: titleInput.trim() });
+                  setShowRenameDialog(false);
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (titleInput.trim()) {
+                  updateMeta({ title: titleInput.trim() });
+                  setShowRenameDialog(false);
+                }
+              }}
+              disabled={!titleInput.trim()}
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

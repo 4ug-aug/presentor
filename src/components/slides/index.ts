@@ -1,0 +1,1 @@
+export { EditableSlide } from './EditableSlide';

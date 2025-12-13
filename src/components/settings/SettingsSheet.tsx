@@ -71,10 +71,10 @@ export function SettingsSheet({ open, onOpenChange }: SettingsSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="border-zinc-800 bg-zinc-950 text-zinc-200">
+      <SheetContent>
         <SheetHeader>
-          <SheetTitle className="text-zinc-100">Settings</SheetTitle>
-          <SheetDescription className="text-zinc-500">
+          <SheetTitle>Settings</SheetTitle>
+          <SheetDescription>
             Configure your AI provider
           </SheetDescription>
         </SheetHeader>
@@ -83,15 +83,15 @@ export function SettingsSheet({ open, onOpenChange }: SettingsSheetProps) {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Provider */}
             <div className="space-y-2">
-              <Label className="text-xs text-zinc-400">Provider</Label>
+              <Label className="text-xs">Provider</Label>
               <Select
                 value={provider}
                 onValueChange={handleProviderChange}
               >
-                <SelectTrigger className="border-zinc-800 bg-zinc-900 text-sm">
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-zinc-800 bg-zinc-900">
+                <SelectContent>
                   <SelectItem value="openai">OpenAI</SelectItem>
                   <SelectItem value="google">Google</SelectItem>
                   <SelectItem value="ollama">Ollama (Local)</SelectItem>
@@ -103,11 +103,11 @@ export function SettingsSheet({ open, onOpenChange }: SettingsSheetProps) {
             {/* API Key */}
             {needsApiKey && (
               <div className="space-y-2">
-                <Label className="text-xs text-zinc-400">API Key</Label>
+                <Label className="text-xs">API Key</Label>
                 <Input
                   type="password"
                   {...form.register('apiKey')}
-                  className="border-zinc-800 bg-zinc-900 font-mono text-sm"
+                  className="font-mono text-sm"
                   placeholder="sk-..."
                 />
               </div>
@@ -116,10 +116,10 @@ export function SettingsSheet({ open, onOpenChange }: SettingsSheetProps) {
             {/* Base URL */}
             {needsBaseUrl && (
               <div className="space-y-2">
-                <Label className="text-xs text-zinc-400">Base URL</Label>
+                <Label className="text-xs">Base URL</Label>
                 <Input
                   {...form.register('baseUrl')}
-                  className="border-zinc-800 bg-zinc-900 font-mono text-sm"
+                  className="font-mono text-sm"
                   placeholder="http://localhost:11434"
                 />
               </div>
@@ -127,15 +127,15 @@ export function SettingsSheet({ open, onOpenChange }: SettingsSheetProps) {
 
             {/* Model */}
             <div className="space-y-2">
-              <Label className="text-xs text-zinc-400">Model</Label>
+              <Label className="text-xs">Model</Label>
               <Select
                 value={form.watch('modelName')}
                 onValueChange={(v) => form.setValue('modelName', v)}
               >
-                <SelectTrigger className="border-zinc-800 bg-zinc-900 text-sm">
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-zinc-800 bg-zinc-900">
+                <SelectContent>
                   {DEFAULT_MODELS[provider]?.map((model) => (
                     <SelectItem key={model} value={model}>
                       {model}
@@ -147,7 +147,7 @@ export function SettingsSheet({ open, onOpenChange }: SettingsSheetProps) {
 
             <Button
               type="submit"
-              className="w-full bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+              className="w-full"
             >
               Save
             </Button>

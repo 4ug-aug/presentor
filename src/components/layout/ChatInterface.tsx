@@ -57,9 +57,17 @@ export function ChatInterface() {
     try {
       const model = getModel(config);
       
-      // Build context about current presentation
+      // Build context about current presentation with current slide content
+      const currentSlide = presentation?.slides[currentSlideIndex];
       const context = presentation 
-        ? `Current presentation: "${presentation.meta.title}" with ${presentation.slides.length} slides. Current slide index: ${currentSlideIndex}.`
+        ? `Current presentation: "${presentation.meta.title}" with ${presentation.slides.length} slides.
+Current slide index: ${currentSlideIndex}.
+
+Current slide HTML:
+\`\`\`html
+${currentSlide?.html ?? 'No slide content'}
+\`\`\`
+${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
         : 'No presentation loaded. User should create a new one first.';
 
       // Try to use tools if model supports it
@@ -126,19 +134,19 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-zinc-950">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-zinc-800 px-3 py-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <div className="border-b border-border px-3 py-2">
+        <span className="text-xs font-medium uppercase tracking-wide">
           AI Director
         </span>
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1" ref={scrollRef}>
+      <ScrollArea className="flex-1 max-h-full" ref={scrollRef}>
         <div className="space-y-3 p-3">
           {messages.length === 0 && !isLoading && (
-            <div className="py-8 text-center text-xs text-zinc-600">
+            <div className="py-8 text-center text-xs">
               {isConfigured 
                 ? "Describe the slide you want to create" 
                 : "Configure AI settings to get started"}
@@ -150,17 +158,17 @@ export function ChatInterface() {
               className={cn(
                 "rounded px-3 py-2 text-sm",
                 message.role === 'user'
-                  ? "bg-zinc-800 text-zinc-200"
-                  : "border border-zinc-800 text-zinc-400"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground"
               )}
             >
-              <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed">
+              <pre className="max-h-[200px] overflow-y-auto whitespace-pre-wrap font-mono text-xs leading-relaxed">
                 {message.content}
               </pre>
             </div>
           ))}
           {isLoading && (
-            <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <div className="flex items-center gap-2 text-xs">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Generating...</span>
             </div>
@@ -169,14 +177,14 @@ export function ChatInterface() {
       </ScrollArea>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="border-t border-zinc-800 p-3">
+      <form onSubmit={handleSubmit} className="border-t border-border p-3">
         <div className="flex gap-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isConfigured ? "Create a title slide about..." : "Configure AI first"}
             disabled={!isConfigured || isLoading}
-            className="min-h-[60px] resize-none bg-zinc-900 border-zinc-800 text-sm text-zinc-200 placeholder:text-zinc-600"
+            className="resize-none text-sm placeholder:text-muted-foreground"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -188,7 +196,7 @@ export function ChatInterface() {
             type="submit"
             size="icon"
             disabled={!isConfigured || isLoading || !input.trim()}
-            className="h-[60px] w-10 bg-zinc-800 hover:bg-zinc-700"
+            className="h-[60px] w-10"
           >
             <Send className="h-4 w-4" />
           </Button>

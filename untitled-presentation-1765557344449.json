@@ -1,14 +1,18 @@
 {
   "meta": {
-    "title": "Untitled Presentation",
+    "title": "AI Presentation",
     "createdAt": "2025-12-12T16:17:42.325Z",
-    "updatedAt": "2025-12-12T16:36:35.728Z",
+    "updatedAt": "2025-12-12T19:37:49.288Z",
     "theme": "dark-corporate"
   },
   "slides": [
     {
       "id": "slide-1765556262325",
       "html": "<section class=\"slide\"><h1>Financial Presentation</h1></section>"
+    },
+    {
+      "id": "slide-1765567968877",
+      "html": "<section class=\"slide slide-content slide-content-layout\">\n  <div class=\"slide-header\">\n    <h2>AI Overview</h2>\n    <p>Key concepts and applications</p>\n  </div>\n  <div class=\"slide-body\">\n    <ul>\n      <li>Definition: Systems that learn and adapt</li>\n      <li>Applications: Healthcare, finance, automation</li>\n      <li>Challenges: Ethical concerns, data privacy</li>\n    </ul>\n  </div>\n</section>"
     }
   ]
 }
