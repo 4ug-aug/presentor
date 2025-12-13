@@ -1,10 +1,18 @@
 import type { ChatMessage } from '@/types/presentation';
 import { create } from 'zustand';
 
+export interface AgentStep {
+  type: 'thinking' | 'tool_call' | 'tool_result';
+  content: string;
+  toolName?: string;
+  timestamp: string;
+}
+
 interface ChatState {
   messages: ChatMessage[];
   isLoading: boolean;
   streamingContent: string;
+  agentSteps: AgentStep[];
   error: string | null;
   
   // Actions
@@ -16,12 +24,16 @@ interface ChatState {
   setError: (error: string | null) => void;
   clearMessages: () => void;
   finalizeStreaming: () => void;
+  // Agent step actions
+  addAgentStep: (step: Omit<AgentStep, 'timestamp'>) => void;
+  clearAgentSteps: () => void;
 }
 
 export const useChatStore = create<ChatState>()((set, get) => ({
   messages: [],
   isLoading: false,
   streamingContent: '',
+  agentSteps: [],
   error: null,
 
   addMessage: (message) => set((state) => ({
@@ -55,7 +67,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   setError: (error) => set({ error, isLoading: false }),
 
-  clearMessages: () => set({ messages: [], streamingContent: '', error: null }),
+  clearMessages: () => set({ messages: [], streamingContent: '', agentSteps: [], error: null }),
 
   finalizeStreaming: () => {
     const { streamingContent } = get();
@@ -75,4 +87,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       }));
     }
   },
+
+  addAgentStep: (step) => set((state) => ({
+    agentSteps: [
+      ...state.agentSteps,
+      {
+        ...step,
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  })),
+
+  clearAgentSteps: () => set({ agentSteps: [] }),
 }));
+

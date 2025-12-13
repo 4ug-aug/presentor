@@ -33,7 +33,7 @@ export interface AIConfig {
 }
 
 export const DEFAULT_MODELS: Record<LLMProvider, string[]> = {
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  openai: ['gpt-5-mini'],
   ollama: ['qwen3:4b'],
   google: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
   vllm: ['qwen3:4b'],

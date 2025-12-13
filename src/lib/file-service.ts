@@ -48,3 +48,37 @@ export function generatePresentationPath(storageDir: string, title: string): str
   return `${storageDir}/${safeName || 'untitled'}-${Date.now()}.json`;
 }
 
+// Image-related types and functions
+export interface ImageEntry {
+  name: string;
+  path: string;
+}
+
+/**
+ * List all images in the images directory
+ */
+export async function listImages(storageDir: string): Promise<ImageEntry[]> {
+  return invoke<ImageEntry[]>('list_images', { storageDir });
+}
+
+/**
+ * Save an image to the images directory
+ * Returns the filename of the saved image
+ */
+export async function saveImage(storageDir: string, sourcePath: string): Promise<string> {
+  return invoke<string>('save_image', { storageDir, sourcePath });
+}
+
+/**
+ * Delete an image from the images directory
+ */
+export async function deleteImage(imagePath: string): Promise<void> {
+  return invoke<void>('delete_image', { imagePath });
+}
+
+/**
+ * Get the images directory path
+ */
+export function getImagesDirectory(storageDir: string): string {
+  return `${storageDir}/images`;
+}

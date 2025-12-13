@@ -63,7 +63,7 @@ export function SettingsSheet({ open, onOpenChange }: SettingsSheetProps) {
     } else if (value === 'vllm') {
       form.setValue('baseUrl', 'http://localhost:8000/v1');
     } else if (value === 'openai') {
-      form.setValue('modelName', 'gpt-4o-mini');
+      form.setValue('modelName', 'gpt-5-mini');
     } else if (value === 'google') {
       form.setValue('modelName', 'gemini-1.5-flash');
     }

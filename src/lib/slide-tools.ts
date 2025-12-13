@@ -60,19 +60,33 @@ export const getSlideInfoTool = tool(
   }
 );
 
+export const listAvailableImagesTool = tool(
+  async () => {
+    return JSON.stringify({ action: 'list_available_images' });
+  },
+  {
+    name: 'list_available_images',
+    description: 'Get a list of images available in the user\'s image library. Call this before creating slides with images to get the correct image URLs. Returns an array of image objects with name and url properties.',
+    schema: z.object({}),
+  }
+);
+
 export const slideTools = [
   createSlideTool,
   updateSlideTool,
   deleteSlideTool,
   getSlideInfoTool,
+  listAvailableImagesTool,
 ];
 
 export type SlideToolAction = 
   | { action: 'create_slide'; html: string; notes?: string }
   | { action: 'update_slide'; slideIndex: number; html: string; notes?: string }
   | { action: 'delete_slide'; slideIndex: number }
-  | { action: 'get_slide_info'; slideIndex?: number };
+  | { action: 'get_slide_info'; slideIndex?: number }
+  | { action: 'list_available_images' };
 
 export function parseToolResult(result: string): SlideToolAction {
   return JSON.parse(result) as SlideToolAction;
 }
+

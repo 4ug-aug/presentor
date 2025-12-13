@@ -1,3 +1,4 @@
+import { ImageLibrary } from '@/components/images';
 import { useTheme } from '@/components/theme/theme-provider';
 import {
   AlertDialog,
@@ -180,8 +181,8 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <div className="flex gap-1">
+      <div className="flex items-center border-b border-border px-3 py-2">
+        <div className="flex flex-wrap gap-1">
           {presentation && (
             <Button
               variant="ghost"
@@ -244,6 +245,7 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
               )}
             </Button>
           )}
+          <ImageLibrary />
           <ThemeToggle />
           <Button
             variant="ghost"
