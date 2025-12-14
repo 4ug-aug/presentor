@@ -17,104 +17,149 @@ body {
   color: var(--foreground);
 }
 
-/* Slide content styling */
-.slide-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  height: 100%;
-  background: var(--card);
-  border-radius: var(--radius);
+/* ============================================
+   SLIDE THEME SYSTEM
+   Canvas-based composition for presentations
+   ============================================ */
+
+/* Slide Design Tokens */
+:root {
+  /* Slide Dimensions (16:9 aspect ratio) */
+  --slide-width: 1280px;
+  --slide-height: 720px;
+  
+  /* Slide Theme Colors */
+  --slide-bg-primary: #ffffff;
+  --slide-bg-secondary: #f4f4f5; /* Zinc-100 */
+  --slide-accent: #2563eb;       /* Blue-600 */
+  --slide-accent-light: #60a5fa; /* Blue-400 */
+  --slide-text-main: #18181b;    /* Zinc-950 */
+  --slide-text-muted: #52525b;   /* Zinc-600 */
+  
+  /* Spacing System */
+  --slide-margin-x: 80px;
+  --slide-margin-y: 60px;
 }
 
+/* 1. The Slide Container - Fixed Canvas */
+.slide-content {
+  width: var(--slide-width) !important;
+  height: var(--slide-height) !important;
+  padding: var(--slide-margin-y) var(--slide-margin-x);
+  background-color: var(--slide-bg-primary);
+  color: var(--slide-text-main);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-radius: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* No visual decorations - clean look */
+
+/* 3. Typography Hierarchy */
 .slide-content h1 {
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--foreground);
-  margin: 0 0 0.75rem;
-  line-height: 1.2;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--slide-text-main);
+  margin: 0 0 1.5rem;
 }
 
 .slide-content h2 {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: var(--foreground);
-  margin: 0 0 0.5rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--slide-text-main);
+  margin: 0 0 2rem;
+  position: relative;
+  display: inline-block;
 }
 
 .slide-content p {
-  font-size: 1rem;
-  color: var(--muted-foreground);
-  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1.6;
+  color: var(--slide-text-muted);
+  margin: 0 0 1rem;
   max-width: 90%;
 }
 
+/* 4. Better Lists */
 .slide-content ul {
-  list-style: none;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-left: 0.5rem;
   margin: 1rem 0;
-  text-align: left;
+  list-style: none;
 }
 
 .slide-content li {
-  font-size: 0.95rem;
-  color: var(--muted-foreground);
-  margin: 0.35rem 0;
-  padding-left: 1.25rem;
+  font-size: 1.5rem;
+  line-height: 1.4;
+  color: var(--slide-text-muted);
+  padding-left: 2rem;
   position: relative;
 }
 
+/* Custom Bullet Points */
 .slide-content li::before {
-  content: "›";
+  content: "•";
+  color: var(--slide-accent);
   position: absolute;
   left: 0;
-  color: var(--muted-foreground);
+  font-weight: bold;
+  font-size: 1.5em;
+  line-height: 1rem;
+  top: 0.2rem;
 }
 
-/* Layout: Title Slide - centered hero layout */
+/* --- Layout Specifics --- */
+
+/* Title Slide: Clean, centered layout */
 .slide-content.slide-title {
   justify-content: center;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .slide-content.slide-title h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+  font-size: 4rem;
+  margin-bottom: 1rem;
 }
 
 .slide-content.slide-title p {
-  font-size: 1.1rem;
+  font-size: 1.75rem;
   max-width: 80%;
 }
 
-/* Layout: Content Slide - top-left aligned with structure */
+/* Content Slide: Standard Grid */
 .slide-content.slide-content-layout {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-items: start;
   justify-content: flex-start;
-  align-items: flex-start;
   text-align: left;
-  padding: 2.5rem;
 }
 
 .slide-content .slide-header {
   width: 100%;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .slide-content .slide-header h2 {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  text-align: left;
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .slide-content .slide-header p {
-  font-size: 1.1rem;
-  text-align: left;
-  max-width: 100%;
+  font-size: 1.25rem;
 }
 
 .slide-content .slide-body {
@@ -124,29 +169,29 @@ body {
 
 .slide-content .slide-body ul {
   margin: 0;
-  padding-left: 0;
 }
 
 .slide-content .slide-body li {
-  font-size: 1.25rem;
-  margin: 0.75rem 0;
+  font-size: 1.75rem;
+  margin: 1rem 0;
 }
 
-/* Layout: Image + Content side by side (image on left) */
+/* Layout: Image + Content (image on left) */
 .slide-content.slide-image-left {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  padding: 2rem;
-  text-align: left;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 4rem;
   align-items: center;
+  text-align: left;
 }
 
 .slide-content.slide-image-left .slide-image {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 500px;
   object-fit: cover;
-  border-radius: var(--radius);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .slide-content.slide-image-left .slide-body {
@@ -155,18 +200,16 @@ body {
   justify-content: center;
 }
 
-/* Layout: Image + Content side by side (image on right) */
+/* Layout: Image + Content (image on right) */
 .slide-content.slide-image-right {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  padding: 2rem;
-  text-align: left;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 4rem;
   align-items: center;
+  text-align: left;
 }
 
 .slide-content.slide-image-right .slide-body {
-  order: -1;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -174,9 +217,11 @@ body {
 
 .slide-content.slide-image-right .slide-image {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 500px;
   object-fit: cover;
-  border-radius: var(--radius);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 /* Layout: Full-bleed background image */
@@ -185,6 +230,9 @@ body {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
 .slide-content.slide-image-background::before {
@@ -192,7 +240,10 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
-  border-radius: var(--radius);
+}
+
+.slide-content.slide-image-background::after {
+  display: none; /* Hide accent bar for background images */
 }
 
 .slide-content.slide-image-background > * {
@@ -213,21 +264,20 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 1.5rem;
-  padding: 2rem;
+  gap: 2rem;
 }
 
 .slide-content.slide-image-centered .slide-image {
-  max-width: 80%;
-  max-height: 90%;
+  max-width: 70%;
+  max-height: 450px;
   object-fit: contain;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
 }
 
 .slide-content.slide-image-centered .slide-caption {
   text-align: center;
-  max-width: 80%;
+  max-width: 70%;
 }
 
 .slide-content.slide-image-centered .slide-caption h2 {
@@ -235,7 +285,8 @@ body {
 }
 
 .slide-content.slide-image-centered .slide-caption p {
-  font-size: 1rem;
+  font-size: 1.25rem;
+  max-width: 100%;
 }
 
 /* Inline editing styles */

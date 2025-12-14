@@ -1,3 +1,4 @@
+import type { PendingApproval } from '@/lib/agent';
 import type { ChatMessage } from '@/types/presentation';
 import { create } from 'zustand';
 
@@ -15,6 +16,7 @@ interface ChatState {
   agentSteps: AgentStep[];
   error: string | null;
   abortController: AbortController | null;
+  pendingApproval: PendingApproval | null;
   
   // Actions
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -31,6 +33,10 @@ interface ChatState {
   // Task cancellation
   setAbortController: (controller: AbortController | null) => void;
   cancelTask: () => void;
+  // Approval actions
+  setPendingApproval: (approval: PendingApproval | null) => void;
+  approveAction: () => void;
+  rejectAction: () => void;
 }
 
 export const useChatStore = create<ChatState>()((set, get) => ({
@@ -40,6 +46,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   agentSteps: [],
   error: null,
   abortController: null,
+  pendingApproval: null,
 
   addMessage: (message) => set((state) => ({
     messages: [
@@ -116,6 +123,23 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       isLoading: false, 
       abortController: null,
       streamingContent: '',
+      agentSteps: [],
+      pendingApproval: null,
+    });
+  },
+
+  setPendingApproval: (pendingApproval) => set({ pendingApproval }),
+
+  approveAction: () => {
+    // The ChatInterface will handle resuming the agent with the approved action
+    // This just clears the UI state - actual execution happens in ChatInterface
+    set({ pendingApproval: null });
+  },
+
+  rejectAction: () => {
+    set({ 
+      pendingApproval: null,
+      isLoading: false,
       agentSteps: [],
     });
   },

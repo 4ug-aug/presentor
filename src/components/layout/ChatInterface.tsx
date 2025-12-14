@@ -1,4 +1,19 @@
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -7,22 +22,24 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { streamSlideAgent } from '@/lib/agent';
+import { streamSlideAgent, type EditorContext } from '@/lib/agent';
 import { cn } from '@/lib/utils';
 import { useChatStore, usePresentationStore, useSettingsStore } from '@/stores';
 import { useImageStore } from '@/stores/image-store';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { CheckCircle, Loader2, MessageSquarePlus, Send, Square, Wrench } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, Loader2, MessageSquarePlus, Send, Square, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export function ChatInterface() {
   const [input, setInput] = useState('');
+  const [isThinkingOpen, setIsThinkingOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const { 
     messages, 
     isLoading, 
     agentSteps,
+    pendingApproval,
     addMessage, 
     setLoading, 
     setError,
@@ -31,6 +48,8 @@ export function ChatInterface() {
     clearMessages,
     setAbortController,
     cancelTask,
+    setPendingApproval,
+    rejectAction,
   } = useChatStore();
   const { config, isConfigured, storageDirectory } = useSettingsStore();
   const { presentation, currentSlideIndex, addSlide, updateSlide, deleteSlide } = usePresentationStore();
@@ -93,23 +112,22 @@ export function ChatInterface() {
     setAbortController(abortController);
 
     try {
-      // Build context about current presentation
+      // Build EditorContext from current presentation state
       const currentSlide = presentation?.slides[currentSlideIndex];
-      const context = presentation 
-        ? `Current presentation: "${presentation.meta.title}" with ${presentation.slides.length} slides.
-Current slide index: ${currentSlideIndex}.
-
-Current slide HTML:
-\`\`\`html
-${currentSlide?.html ?? 'No slide content'}
-\`\`\`
-${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
-        : 'No presentation loaded. User should create a new one first.';
+      const editorContext: EditorContext | null = presentation 
+        ? {
+            presentationTitle: presentation.meta.title,
+            totalSlides: presentation.slides.length,
+            currentSlideIndex,
+            currentSlideHtml: currentSlide?.html ?? '',
+            currentSlideNotes: currentSlide?.notes,
+          }
+        : null;
 
       // Run the agent with streaming callbacks
-      const finalResponse = await streamSlideAgent(
+      const result = await streamSlideAgent(
         config,
-        context,
+        editorContext,
         userMessage,
         executeToolByName,
         {
@@ -135,11 +153,21 @@ ${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
               });
             }
           },
+          onApprovalRequired: (approval) => {
+            setPendingApproval(approval);
+          },
         },
         abortController.signal
       );
 
-      addMessage({ role: 'assistant', content: finalResponse });
+      // Check if we have a pending approval (agent paused for user confirmation)
+      if (result.pendingApproval) {
+        setPendingApproval(result.pendingApproval);
+        // Don't add message yet - wait for user approval
+        return;
+      }
+
+      addMessage({ role: 'assistant', content: result.response });
     } catch (err) {
       // Don't show error if it was a user-initiated abort
       if (err instanceof Error && err.name === 'AbortError') {
@@ -154,6 +182,29 @@ ${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
       clearAgentSteps();
       setAbortController(null);
     }
+  };
+
+  // Handle approval of sensitive action
+  const handleApprove = async () => {
+    if (!pendingApproval) return;
+    
+    // Execute the pending tool
+    const { toolName, args } = pendingApproval;
+    setPendingApproval(null);
+    
+    try {
+      await executeToolByName(toolName, args);
+      addMessage({ role: 'assistant', content: `Approved and executed: ${toolName}` });
+    } catch (err) {
+      addMessage({ role: 'assistant', content: `Error executing ${toolName}: ${err}` });
+    }
+    setLoading(false);
+  };
+
+  // Handle rejection of sensitive action
+  const handleReject = () => {
+    rejectAction();
+    addMessage({ role: 'assistant', content: 'Action cancelled by user.' });
   };
 
   return (
@@ -211,29 +262,51 @@ ${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
             </div>
           ))}
           
-          {/* Agent Steps (shown while loading) */}
-          {isLoading && agentSteps.length > 0 && (
-            <div className="space-y-1.5 rounded border border-border bg-muted/30 p-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Working...</span>
-              </div>
-              {agentSteps.map((step, index) => (
-                <div key={index} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                  {step.type === 'tool_call' && <Wrench className="h-3 w-3 mt-0.5 text-blue-500" />}
-                  {step.type === 'tool_result' && <CheckCircle className="h-3 w-3 mt-0.5 text-green-500" />}
-                  {step.type === 'thinking' && <span className="text-yellow-500">💭</span>}
-                  <span className="truncate">{step.content}</span>
+          {/* Agent Reasoning (collapsible, shown while loading) */}
+          {isLoading && (
+            <Collapsible 
+              open={isThinkingOpen} 
+              onOpenChange={setIsThinkingOpen}
+              className="rounded border border-border bg-muted/30"
+            >
+              <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>
+                    {agentSteps.length > 0 
+                      ? `Working... (${agentSteps.length} step${agentSteps.length > 1 ? 's' : ''})` 
+                      : 'Thinking...'}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
-          
-          {isLoading && agentSteps.length === 0 && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Thinking...</span>
-            </div>
+                <ChevronDown className={cn(
+                  "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                  isThinkingOpen && "rotate-180"
+                )} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="space-y-2 border-t border-border px-3 py-2 max-h-48 overflow-y-auto">
+                  {agentSteps.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">Waiting for response...</p>
+                  ) : (
+                    agentSteps.map((step, index) => (
+                      <div key={index} className="flex items-start gap-2 text-xs">
+                        <div className="flex-shrink-0 mt-0.5">
+                          {step.type === 'tool_call' && <Wrench className="h-3 w-3 text-blue-500" />}
+                          {step.type === 'tool_result' && <CheckCircle className="h-3 w-3 text-green-500" />}
+                          {step.type === 'thinking' && <span className="text-yellow-500">💭</span>}
+                        </div>
+                        <span className={cn(
+                          "text-muted-foreground leading-relaxed",
+                          step.type === 'thinking' && "italic"
+                        )}>
+                          {step.content}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
       </ScrollArea>
@@ -276,6 +349,38 @@ ${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
           )}
         </div>
       </form>
+
+      {/* Approval Dialog for Sensitive Actions */}
+      <AlertDialog open={!!pendingApproval} onOpenChange={(open) => !open && handleReject()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirm Action
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The AI wants to perform a sensitive action:
+              <div className="mt-2 rounded bg-muted p-2 font-mono text-xs">
+                {pendingApproval?.toolName}
+                {pendingApproval?.args && (
+                  <span className="text-muted-foreground">
+                    ({JSON.stringify(pendingApproval.args)})
+                  </span>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleReject}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleApprove}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

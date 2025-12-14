@@ -58,7 +58,10 @@ async function convertImagesToDataUrls(html: string): Promise<string> {
  * Render a slide element to a canvas
  */
 async function renderSlideToCanvas(
-  slideHtml: string
+  slideHtml: string,
+  slideIndex: number,
+  totalSlides: number,
+  presentationTitle: string
 ): Promise<HTMLCanvasElement> {
   // Convert asset URLs to data URLs for html2canvas
   const processedHtml = await convertImagesToDataUrls(slideHtml);
@@ -74,41 +77,42 @@ async function renderSlideToCanvas(
     overflow: hidden;
   `;
   
-  // Create wrapper that matches slide rendering
+  // Slide footer for professional look
+  const footerHtml = `
+    <div style="
+      position: absolute; 
+      bottom: 20px; 
+      left: 80px; 
+      right: 80px; 
+      display: flex; 
+      justify-content: space-between; 
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 14px; 
+      color: #94a3b8;
+      z-index: 10;
+    ">
+      <span>${presentationTitle}</span>
+      <span>${slideIndex + 1} / ${totalSlides}</span>
+    </div>
+  `;
+  
+  // Create wrapper with slide-content class - let CSS handle styling
   const wrapper = document.createElement('div');
   wrapper.className = 'slide-content';
-  wrapper.innerHTML = processedHtml;
+  wrapper.innerHTML = processedHtml + footerHtml;
   wrapper.style.cssText = `
     width: ${SLIDE_WIDTH}px;
     height: ${SLIDE_HEIGHT}px;
-    background: #1a1a1a;
-    color: #e8e6e3;
-    font-family: Inter, system-ui, sans-serif;
+    position: relative;
     overflow: hidden;
     box-sizing: border-box;
   `;
-  
-  // Apply slide scaling for proper rendering
-  const section = wrapper.querySelector('section');
-  if (section) {
-    section.style.cssText = `
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 40px;
-      box-sizing: border-box;
-      text-align: center;
-    `;
-  }
   
   // Scale images appropriately
   const images = wrapper.querySelectorAll('img');
   images.forEach(img => {
     img.style.maxWidth = '100%';
-    img.style.maxHeight = '300px';
+    img.style.maxHeight = '400px';
     img.style.objectFit = 'contain';
   });
   
@@ -119,11 +123,18 @@ async function renderSlideToCanvas(
     const canvas = await html2canvas(wrapper, {
       width: SLIDE_WIDTH,
       height: SLIDE_HEIGHT,
-      scale: 1.5, // Higher scale for sharper text
-      backgroundColor: '#1a1a1a',
+      scale: 1, // 2x scale for crisp text on HD screens
+      backgroundColor: null, // Let CSS background color shine through
       logging: false,
       useCORS: true,
       allowTaint: true,
+      onclone: (clonedDoc) => {
+        // Force layout recalculation in cloned document
+        const clonedWrapper = clonedDoc.querySelector('.slide-content') as HTMLElement;
+        if (clonedWrapper) {
+          clonedWrapper.style.transform = 'none';
+        }
+      }
     });
     return canvas;
   } finally {
@@ -165,7 +176,7 @@ export async function exportToPdf(options: ExportOptions): Promise<boolean> {
   });
   
   for (let i = 0; i < slides.length; i++) {
-    const canvas = await renderSlideToCanvas(slides[i].html);
+    const canvas = await renderSlideToCanvas(slides[i].html, i, slides.length, title);
     // Use JPEG with 0.85 quality for good balance of size and quality
     const imgData = canvas.toDataURL('image/jpeg', 0.85);
     
