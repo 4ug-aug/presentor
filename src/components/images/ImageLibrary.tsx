@@ -1,21 +1,23 @@
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useImageStore } from '@/stores/image-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Copy, Image, Trash2, Upload } from 'lucide-react';
+import { Check, Copy, ImageIcon, Loader2, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function ImageLibrary() {
   const [isOpen, setIsOpen] = useState(false);
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
   const { images, isLoading, loadImages, uploadImage, deleteImage } = useImageStore();
   const { storageDirectory } = useSettingsStore();
 
@@ -60,10 +62,16 @@ export function ImageLibrary() {
     }
   };
 
-  const copyImagePath = (imagePath: string) => {
-    // Convert to asset URL for use in slides
+  const copyImageUrl = (imagePath: string) => {
     const assetUrl = convertFileSrc(imagePath);
     navigator.clipboard.writeText(assetUrl);
+    setCopiedPath(imagePath);
+    setTimeout(() => setCopiedPath(null), 2000);
+  };
+
+  const getImageSrc = (path: string): string => {
+    // Use Tauri's convertFileSrc for proper asset protocol URL
+    return convertFileSrc(path);
   };
 
   return (
@@ -75,76 +83,121 @@ export function ImageLibrary() {
           className="h-6 w-6 text-muted-foreground"
           title="Image Library"
         >
-          <Image className="h-3.5 w-3.5" />
+          <ImageIcon className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Image Library</span>
+      <DialogContent className="max-w-2xl max-h-[85vh]">
+        <DialogHeader className="space-y-1">
+          <div className="flex items-center justify-between">
+            <DialogTitle>Image Library</DialogTitle>
             <Button
               size="sm"
               onClick={handleUpload}
               disabled={isLoading || !storageDirectory}
               className="gap-1.5"
             >
-              <Upload className="h-3.5 w-3.5" />
+              {isLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
               Upload
             </Button>
-          </DialogTitle>
+          </div>
+          <DialogDescription>
+            Upload images to use in your slides. Click to copy the URL.
+          </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-[400px] w-full">
+        <div className="mt-4">
           {!storageDirectory ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Please configure a storage directory in settings
+            <div className="flex h-[300px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
+              <div className="text-center">
+                <ImageIcon className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Configure a storage directory in settings first
+                </p>
+              </div>
             </div>
           ) : images.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
-              <Image className="h-12 w-12 opacity-30" />
-              <p className="text-sm">No images yet</p>
-              <p className="text-xs">Upload images to use in your slides</p>
+            <div 
+              className="flex h-[300px] cursor-pointer items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 transition-colors hover:border-primary/50 hover:bg-muted/50"
+              onClick={handleUpload}
+            >
+              <div className="text-center">
+                <Upload className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                <p className="mt-2 text-sm font-medium">No images yet</p>
+                <p className="text-xs text-muted-foreground">Click to upload images</p>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3 p-1">
-              {images.map((image) => (
-                <div
-                  key={image.path}
-                  className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted"
-                >
-                  <img
-                    src={convertFileSrc(image.path)}
-                    alt={image.name}
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-end justify-center gap-1 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => copyImagePath(image.path)}
-                      title="Copy URL"
+            <ScrollArea className="h-[400px] pr-3">
+              <div className="grid grid-cols-3 gap-4">
+                {images.map((image) => (
+                  <div
+                    key={image.path}
+                    className="group relative overflow-hidden rounded-lg border border-border bg-muted/30 transition-all hover:border-primary/50 hover:shadow-md"
+                  >
+                    {/* Image container */}
+                    <div 
+                      className="aspect-square cursor-pointer overflow-hidden"
+                      onClick={() => copyImageUrl(image.path)}
                     >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => handleDelete(image.path)}
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                      <img
+                        src={getImageSrc(image.path)}
+                        alt={image.name}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        onError={(e) => {
+                          // Fallback for broken images
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement!.innerHTML = `
+                            <div class="flex h-full w-full items-center justify-center bg-muted">
+                              <svg class="h-8 w-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          `;
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Info bar */}
+                    <div className="flex items-center justify-between border-t border-border bg-background/80 px-2 py-1.5">
+                      <span className="truncate text-xs text-muted-foreground">
+                        {image.name}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => copyImageUrl(image.path)}
+                          title="Copy URL"
+                        >
+                          {copiedPath === image.path ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-red-500 hover:text-red-600"
+                          onClick={() => handleDelete(image.path)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="absolute bottom-0 left-0 right-0 truncate bg-black/40 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100">
-                    {image.name}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

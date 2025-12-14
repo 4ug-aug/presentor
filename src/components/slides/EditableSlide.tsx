@@ -1,6 +1,32 @@
 import DOMPurify from 'dompurify';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// Configure DOMPurify to allow img tags and asset URLs
+DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
+  // Allow asset:// and https://asset.localhost URLs in src attributes
+  if (data.attrName === 'src' && node.tagName === 'IMG') {
+    const value = data.attrValue;
+    if (value.startsWith('asset://') || 
+        value.startsWith('https://asset.localhost') ||
+        value.startsWith('http://asset.localhost') ||
+        value.startsWith('data:') ||
+        value.startsWith('blob:')) {
+      data.forceKeepAttr = true;
+    }
+  }
+  // Allow style attribute for background-image
+  if (data.attrName === 'style') {
+    data.forceKeepAttr = true;
+  }
+});
+
+// Add asset: to allowed URI schemes
+DOMPurify.setConfig({
+  ADD_TAGS: ['img'],
+  ADD_ATTR: ['src', 'alt', 'class', 'style'],
+  ALLOWED_URI_REGEXP: /^(?:(?:https?|asset|blob|data):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+});
+
 interface EditableSlideProps {
   html: string;
   onUpdate: (newHtml: string) => void;

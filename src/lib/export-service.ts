@@ -1,10 +1,58 @@
 import { save } from '@tauri-apps/plugin-dialog';
-import { writeFile } from '@tauri-apps/plugin-fs';
+import { readFile, writeFile } from '@tauri-apps/plugin-fs';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-const SLIDE_WIDTH = 1920;
-const SLIDE_HEIGHT = 1080;
+// Use smaller dimensions for export to reduce file size
+const SLIDE_WIDTH = 1280;
+const SLIDE_HEIGHT = 720;
+
+/**
+ * Convert asset:// URLs to data URLs so html2canvas can render them
+ */
+async function convertImagesToDataUrls(html: string): Promise<string> {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const images = doc.querySelectorAll('img');
+  
+  for (const img of images) {
+    const src = img.getAttribute('src');
+    if (src && (src.startsWith('asset://') || src.startsWith('https://asset.localhost'))) {
+      try {
+        // Extract the file path from the asset URL
+        // asset://localhost/path/to/file or https://asset.localhost/path/to/file
+        let filePath = src;
+        if (src.startsWith('asset://localhost/')) {
+          filePath = '/' + src.replace('asset://localhost/', '');
+        } else if (src.startsWith('https://asset.localhost/')) {
+          filePath = '/' + src.replace('https://asset.localhost/', '');
+        }
+        
+        // Read the file and convert to base64
+        const fileData = await readFile(filePath);
+        const base64 = btoa(String.fromCharCode(...fileData));
+        
+        // Determine MIME type from extension
+        const ext = filePath.split('.').pop()?.toLowerCase() || 'png';
+        const mimeTypes: Record<string, string> = {
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml',
+        };
+        const mimeType = mimeTypes[ext] || 'image/png';
+        
+        img.setAttribute('src', `data:${mimeType};base64,${base64}`);
+      } catch (err) {
+        console.warn('Failed to convert image to data URL:', src, err);
+      }
+    }
+  }
+  
+  return doc.body.innerHTML;
+}
 
 /**
  * Render a slide element to a canvas
@@ -12,6 +60,9 @@ const SLIDE_HEIGHT = 1080;
 async function renderSlideToCanvas(
   slideHtml: string
 ): Promise<HTMLCanvasElement> {
+  // Convert asset URLs to data URLs for html2canvas
+  const processedHtml = await convertImagesToDataUrls(slideHtml);
+  
   // Create a temporary container for rendering
   const container = document.createElement('div');
   container.style.cssText = `
@@ -23,24 +74,43 @@ async function renderSlideToCanvas(
     overflow: hidden;
   `;
   
-  // Create shadow DOM to isolate styles
+  // Create wrapper that matches slide rendering
   const wrapper = document.createElement('div');
   wrapper.className = 'slide-content';
-  wrapper.innerHTML = slideHtml;
+  wrapper.innerHTML = processedHtml;
   wrapper.style.cssText = `
     width: ${SLIDE_WIDTH}px;
     height: ${SLIDE_HEIGHT}px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: var(--card, #242424);
-    color: var(--foreground, #e8e6e3);
+    background: #1a1a1a;
+    color: #e8e6e3;
     font-family: Inter, system-ui, sans-serif;
-    font-size: 48px;
-    padding: 80px;
+    overflow: hidden;
     box-sizing: border-box;
   `;
+  
+  // Apply slide scaling for proper rendering
+  const section = wrapper.querySelector('section');
+  if (section) {
+    section.style.cssText = `
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      box-sizing: border-box;
+      text-align: center;
+    `;
+  }
+  
+  // Scale images appropriately
+  const images = wrapper.querySelectorAll('img');
+  images.forEach(img => {
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '300px';
+    img.style.objectFit = 'contain';
+  });
   
   container.appendChild(wrapper);
   document.body.appendChild(container);
@@ -49,9 +119,11 @@ async function renderSlideToCanvas(
     const canvas = await html2canvas(wrapper, {
       width: SLIDE_WIDTH,
       height: SLIDE_HEIGHT,
-      scale: 2,
-      backgroundColor: '#242424',
+      scale: 1.5, // Higher scale for sharper text
+      backgroundColor: '#1a1a1a',
       logging: false,
+      useCORS: true,
+      allowTaint: true,
     });
     return canvas;
   } finally {
@@ -94,13 +166,14 @@ export async function exportToPdf(options: ExportOptions): Promise<boolean> {
   
   for (let i = 0; i < slides.length; i++) {
     const canvas = await renderSlideToCanvas(slides[i].html);
-    const imgData = canvas.toDataURL('image/png');
+    // Use JPEG with 0.85 quality for good balance of size and quality
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
     
     if (i > 0) {
       pdf.addPage([SLIDE_WIDTH, SLIDE_HEIGHT], 'landscape');
     }
     
-    pdf.addImage(imgData, 'PNG', 0, 0, SLIDE_WIDTH, SLIDE_HEIGHT);
+    pdf.addImage(imgData, 'JPEG', 0, 0, SLIDE_WIDTH, SLIDE_HEIGHT);
   }
   
   // Convert to bytes and save

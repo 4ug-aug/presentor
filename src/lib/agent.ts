@@ -167,7 +167,8 @@ export async function streamSlideAgent(
   context: string,
   userMessage: string,
   toolExecutor: ToolExecutor,
-  callbacks?: AgentCallbacks
+  callbacks?: AgentCallbacks,
+  signal?: AbortSignal
 ): Promise<string> {
   const agent = createSlideAgent(config, context, toolExecutor, callbacks);
 
@@ -178,9 +179,14 @@ export async function streamSlideAgent(
   let finalResponse = '';
 
   // Stream the agent execution
-  const stream = await agent.stream(initialState, { streamMode: 'values' });
+  const stream = await agent.stream(initialState, { streamMode: 'values', signal });
   
   for await (const state of stream) {
+    // Check if aborted
+    if (signal?.aborted) {
+      break;
+    }
+    
     const messages = state.messages;
     const lastMessage = messages[messages.length - 1];
     

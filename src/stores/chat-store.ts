@@ -14,6 +14,7 @@ interface ChatState {
   streamingContent: string;
   agentSteps: AgentStep[];
   error: string | null;
+  abortController: AbortController | null;
   
   // Actions
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
@@ -27,6 +28,9 @@ interface ChatState {
   // Agent step actions
   addAgentStep: (step: Omit<AgentStep, 'timestamp'>) => void;
   clearAgentSteps: () => void;
+  // Task cancellation
+  setAbortController: (controller: AbortController | null) => void;
+  cancelTask: () => void;
 }
 
 export const useChatStore = create<ChatState>()((set, get) => ({
@@ -35,6 +39,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   streamingContent: '',
   agentSteps: [],
   error: null,
+  abortController: null,
 
   addMessage: (message) => set((state) => ({
     messages: [
@@ -99,5 +104,19 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   })),
 
   clearAgentSteps: () => set({ agentSteps: [] }),
-}));
 
+  setAbortController: (abortController) => set({ abortController }),
+
+  cancelTask: () => {
+    const { abortController } = get();
+    if (abortController) {
+      abortController.abort();
+    }
+    set({ 
+      isLoading: false, 
+      abortController: null,
+      streamingContent: '',
+      agentSteps: [],
+    });
+  },
+}));

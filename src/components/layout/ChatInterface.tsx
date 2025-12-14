@@ -1,12 +1,18 @@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { streamSlideAgent } from '@/lib/agent';
 import { cn } from '@/lib/utils';
 import { useChatStore, usePresentationStore, useSettingsStore } from '@/stores';
 import { useImageStore } from '@/stores/image-store';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { CheckCircle, Loader2, Send, Wrench } from 'lucide-react';
+import { CheckCircle, Loader2, MessageSquarePlus, Send, Square, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export function ChatInterface() {
@@ -22,6 +28,9 @@ export function ChatInterface() {
     setError,
     addAgentStep,
     clearAgentSteps,
+    clearMessages,
+    setAbortController,
+    cancelTask,
   } = useChatStore();
   const { config, isConfigured, storageDirectory } = useSettingsStore();
   const { presentation, currentSlideIndex, addSlide, updateSlide, deleteSlide } = usePresentationStore();
@@ -79,6 +88,10 @@ export function ChatInterface() {
     setLoading(true);
     clearAgentSteps();
 
+    // Create AbortController for this request
+    const abortController = new AbortController();
+    setAbortController(abortController);
+
     try {
       // Build context about current presentation
       const currentSlide = presentation?.slides[currentSlideIndex];
@@ -122,27 +135,54 @@ ${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
               });
             }
           },
-        }
+        },
+        abortController.signal
       );
 
       addMessage({ role: 'assistant', content: finalResponse });
     } catch (err) {
+      // Don't show error if it was a user-initiated abort
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Task was cancelled, silently handle
+        return;
+      }
       console.error('Agent error:', err);
       setError(err instanceof Error ? err.message : 'Failed to get response');
       addMessage({ role: 'assistant', content: `Error: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setLoading(false);
       clearAgentSteps();
+      setAbortController(null);
     }
   };
 
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-border px-3 py-2">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-xs font-medium uppercase tracking-wide">
           AI Director
         </span>
+        {messages.length > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground"
+                  onClick={clearMessages}
+                  disabled={isLoading}
+                >
+                  <MessageSquarePlus className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>New Chat</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
 
       {/* Messages */}
@@ -214,14 +254,26 @@ ${currentSlide?.notes ? `Speaker notes: ${currentSlide.notes}` : ''}`
               }
             }}
           />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!isConfigured || isLoading || !input.trim()}
-            className="h-[60px] w-10"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          {isLoading ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="destructive"
+              className="h-[60px] w-10"
+              onClick={cancelTask}
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!isConfigured || !input.trim()}
+              className="h-[60px] w-10"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </form>
     </div>

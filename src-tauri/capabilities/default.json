@@ -8,6 +8,14 @@
     "opener:default",
     "dialog:default",
     "fs:default",
-    "fs:write-all"
+    "fs:write-all",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "$HOME/**" }]
+    }
   ]
 }
